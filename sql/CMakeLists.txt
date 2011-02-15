@@ -13,6 +13,7 @@ if( WITH_SQL )
     DIRECTORY
       updates
       scripts
+	  extras
       base
       create
     DESTINATION
