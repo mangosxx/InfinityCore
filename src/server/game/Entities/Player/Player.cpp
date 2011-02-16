@@ -71,6 +71,7 @@
 #include "InstanceScript.h"
 #include <cmath>
 #include "OutdoorPvPWG.h"
+#include "Config.h"
 
 #define ZONE_UPDATE_INTERVAL (1*IN_MILLISECONDS)
 
@@ -1051,9 +1052,12 @@ int32 Player::getMaxTimer(MirrorTimerType timer)
 {
     switch (timer)
     {
+	if(sConfig->GetBoolDefault("fatigue.enabled", true)) // If "fatigue.enabled" is enabled
+		{
         case FATIGUE_TIMER:
             return MINUTE * IN_MILLISECONDS;
-        case BREATH_TIMER:
+		}
+		case BREATH_TIMER:
         {
             if (!isAlive() || HasAuraType(SPELL_AURA_WATER_BREATHING) || GetSession()->GetSecurity() >= AccountTypes(sWorld->getIntConfig(CONFIG_DISABLE_BREATHING)))
                 return DISABLED_MIRROR_TIMER;
@@ -1123,6 +1127,9 @@ void Player::HandleDrowning(uint32 time_diff)
     }
 
     // In dark water
+if(sConfig->GetBoolDefault("fatigue.enabled", true)) // If "fatigue.enabled" is enabled
+{
+
     if (m_MirrorTimerFlags & UNDERWARER_INDARKWATER)
     {
         // Fatigue timer not activated - activate it
@@ -1159,7 +1166,7 @@ void Player::HandleDrowning(uint32 time_diff)
         else if (m_MirrorTimerFlagsLast & UNDERWARER_INDARKWATER)
             SendMirrorTimer(FATIGUE_TIMER, DarkWaterTime, m_MirrorTimer[FATIGUE_TIMER], 10);
     }
-
+}
     if (m_MirrorTimerFlags & (UNDERWATER_INLAVA|UNDERWATER_INSLIME))
     {
         // Breath timer not activated - activate it
