@@ -72,6 +72,7 @@
 #include "SmartAI.h"
 #include "Channel.h"
 #include "AuctionHouseBot.h"
+#include "OutdoorPvPWG.h"
 
 volatile bool World::m_stopEvent = false;
 uint8 World::m_ExitCode = SHUTDOWN_EXIT_CODE;
