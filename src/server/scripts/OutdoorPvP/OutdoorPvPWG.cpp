@@ -1465,7 +1465,7 @@ void OutdoorPvPWG::HandlePlayerLeaveZone(Player * plr, uint32 zone)
 void OutdoorPvPWG::PromotePlayer(Player *killer) const
 {
     Aura * aur;
-    if (aur = killer->GetAura(SPELL_RECRUIT))
+    if (Aura * aur = killer->GetAura(SPELL_RECRUIT))
     {
         if (aur->GetStackAmount() >= 5)
         {
@@ -1522,9 +1522,11 @@ void OutdoorPvPWG::HandleKill(Player *killer, Unit *victim)
     if (ok)
     {
         if (Group *pGroup = killer->GetGroup())
+		{
             for (GroupReference *itr = pGroup->GetFirstMember(); itr != NULL; itr = itr->next())
                 if (itr->getSource()->IsAtGroupRewardDistance(killer) && itr->getSource()->getLevel() > 74)
                     PromotePlayer(itr->getSource());
+		}
         else if (killer->getLevel() > 74)
             PromotePlayer(killer);
     }
