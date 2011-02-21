@@ -163,10 +163,10 @@ enum WorldBoolConfigs
     CONFIG_ALLOW_TICKETS,
     CONFIG_DBC_ENFORCE_ITEM_ATTRIBUTES,
     CONFIG_PRESERVE_CUSTOM_CHANNELS,
-	CONFIG_ANTICHEAT_ENABLE,
     CONFIG_OUTDOORPVP_WINTERGRASP_ENABLED,
     CONFIG_OUTDOORPVP_WINTERGRASP_CUSTOM_HONOR,
     CONFIG_CONFIG_OUTDOORPVP_WINTERGRASP_ANTIFARM_ENABLE,
+    CONFIG_ANTICHEAT_ENABLE,
     BOOL_CONFIG_VALUE_COUNT
 };
 
@@ -758,7 +758,7 @@ class World
 
         uint32 GetCleaningFlags() { return m_CleaningFlags; }
         void   SetCleaningFlags(uint32 flags) { m_CleaningFlags = flags; }
-		
+
         uint32 GetWintergrapsTimer() { return m_WintergrapsTimer; }
         uint32 GetWintergrapsState() { return m_WintergrapsState; }
         uint32 m_WintergrapsTimer;

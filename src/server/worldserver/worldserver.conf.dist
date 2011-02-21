@@ -440,21 +440,45 @@ LogTimestamp = 0
 LogFileLevel = 0
 
 #
-#    LogFilter_AchievementUpdates
-#    LogFilter_CreatureMoves
-#    LogFilter_TransportMoves
-#    LogFilter_VisibilityChanges
-#        Description: Filter log events
-#        Default:     1 - (Enabled, LogFilter_AchievementUpdates)
-#                     1 - (Enabled, LogFilter_CreatureMoves)
-#                     1 - (Enabled, LogFilter_TransportMoves)
-#                     1 - (Enabled, LogFilter_VisibilityChanges)
-#                     0 - (Disabled)
+#    Debug Log Mask
+#        Description: Bitmask that determines which debug log output (level 3)
+#                     will be logged.
+#        Possible flags:
+#                   1 - Anything related to units that doesn't fit in other
+#                          categories.
+#                   2 - Anything related to pets.
+#                   4 - Anything related to vehicles. 
+#                   8 - Anything related to C++ AI, instance scripts, etc.
+#                  16 - Anything related to DB AI, such as SAI, EAI, CreatureAI
+#                  32 - Anything related to DB map scripts
+#                  64 - Anything related to network input/output,
+#                        such as packet handlers and netcode logs
+#                 128 - Anything related to the spellsystem and aurasystem
+#                 256 - Anything related to the achievement system
+#                 512 - Anything related to the condition system
+#                1024 - Anything related to the pool system
+#                2048 - Anything related to the auction house
+#                4096 - Anything related to arena's and battlegrounds
+#                8192 - Anything related to outdoor PVP
+#               16384 - Anything related to the chat system
+#               32768 - Anything related to the LFG system
+#               65536 - Anything related to maps, instances (not scripts),
+#                       grids, cells, visibility, etc.
+#              131072 - Anything related to player loading from DB
+#                      (Player::_LoadXXX functions)
+#              262144 - Anything related to items
+#              524288 - Anything related to player skills 
+#                      (do not confuse with spells)
+#             1048576 - Anything related to loot
+#             2097152 - Anything related to guilds
+#             4194304 - Anything related to transports
+#
+#                       Simply add the values together to create a bitmask.
+#                       For more info see enum DebugLogFilters in Log.h
+#
+#             Default: 0 (nothing)
 
-LogFilter_AchievementUpdates = 1
-LogFilter_CreatureMoves      = 1
-LogFilter_TransportMoves     = 1
-LogFilter_VisibilityChanges  = 1
+DebugLogMask = 0
 
 #
 #    WorldLogFile
@@ -1110,13 +1134,6 @@ InstantLogout = 1
 #                     3  - (Enabled, Admins)
 
 DisableWaterBreath = 4
-
-#
-#    Enable or Disable "Fatigue" timer
-#           default = 1 (enabled)
-#                   = 0 (disabled)
-
-fatigue.enabled = 1
 
 #
 #    AllFlightPaths
@@ -2764,6 +2781,23 @@ AuctionHouseBot.DisableItemsAboveReqSkillRank = 0
 AuctionHouseBot.DisableTGsBelowReqSkillRank = 0
 AuctionHouseBot.DisableTGsAboveReqSkillRank = 0
 
+###############################################################################
+# AUCTION HOUSE BOT GLYPHS PART
+#
+#    AuctionHouseBot.SellGlyphs
+#    Default 0 (Off)
+#
+###############################################################################
+
+AuctionHouseBot.SellGlyphs = 0
+AuctionHouseBot.GlyphsCount = 0
+AuctionHouseBot.DisableGlyphBelowLevel = 0
+AuctionHouseBot.DisableGlyphAboveLevel = 0
+AuctionHouseBot.GlyphBuyOutPriceMin = 0
+AuctionHouseBot.GlyphBuyOutPriceMax = 0
+AuctionHouseBot.GlyphBidPriceMin = 0
+AuctionHouseBot.GlyphBidPriceMax = 0
+
 ###################################################################################################
 # CONSOLE AND REMOTE ACCESS
 #
@@ -2826,20 +2860,6 @@ SOAP.IP = "127.0.0.1"
 SOAP.Port = 7878
 
 #
-
-#     Anticheat.Enable
-#        Description: Enables or disables the Anticheat System functionality
-#        Default:     1 - (Enabled)
-#                     0 - (Disabled)  
-
-Anticheat.Enable = 1
-
-#     Anticheat.ReportsForIngameWarnings
-#        Description: How many reports the player must have to notify to GameMasters ingame when he generates a new report.
-#        Default:     70
-
-Anticheat.ReportsForIngameWarnings = 70
-      
 ###################################################################################################
 
 ###################################################################################################
@@ -3031,100 +3051,146 @@ LevelReq.Auction = 1
 LevelReq.Mail = 1
 
 #
+
+#     Anticheat.Enable
+#        Description: Enables or disables the Anticheat System functionality
+#        Default:     1 - (Enabled)
+#                     0 - (Disabled)
+
+Anticheat.Enable = 1
+
+#     Anticheat.ReportsForIngameWarnings
+#        Description: How many reports the player must have to notify to GameMasters ingame when he generates a new report.
+#        Default:     70
+
+Anticheat.ReportsForIngameWarnings = 70
+
 ###################################################################################################
 
-#######################################################################
+###################################################################################################
+#   Wintergrasp
+#
 #   OutdoorPvP.Wintergrasp.Enabled
 #       Determines whether the Wintergrasp battle is enabled or not.
 #        Default: 0 = Disable
 #                 1 = Enable
+#
+
+OutdoorPvP.Wintergrasp.Enabled = 1
+
 #
 #   OutdoorPvP.Wintergrasp.SaveState.Period
 #      Interval of Save Wintergrasp State Data  to restore it after crash/shutdown/restart
 #      Interval (in milliseconds)
 #      Default (10000 milliseconds)
 #      Warning:  Do not set it less 1 second!
+
+OutdoorPvP.Wintergrasp.SaveState.Period = 60000
+
 #
 #   OutdoorPvP.Wintergrasp.StartTime
 #       The start time of the first battle after server starts (in minutes)
 #       Default: 30
+
+OutdoorPvP.Wintergrasp.StartTime = 30
+
 #
 #   OutdoorPvP.Wintergrasp.BattleTime
 #       Time limit of a battle (in minutes)
 #       Default: 30
+
+OutdoorPvP.Wintergrasp.BattleTime = 30
+
 #
 #   OutdoorPvP.Wintergrasp.Interval
 #       Interval between battles (in minutes)
 #       Default: 150
+
+OutdoorPvP.Wintergrasp.Interval = 150
+
 #
 #   OutdoorPvP.Wintergrasp.CustomHonorRewards
 #       Defines whether custom honor rewards should be given to player
 #        for partaking in the Wintergrasp Battle.
 #        Default: 0 = Disable
 #                 1 = Enable
+
+OutdoorPvP.Wintergrasp.CustomHonorRewards = 0
+
 #
 #   OutdoorPvP.Wintergrasp.CustomHonorBattleWin
 #       Defines the amount of honor points that should be given to the
 #        team winning the Wintergrasp Battle.
 #       Requires OutdoorPvP.Wintergrasp.CustomHonorRewards = 1.
 #       Default: 3000
+
+OutdoorPvP.Wintergrasp.CustomHonorBattleWin = 3000
+
 #
 #   OutdoorPvP.Wintergrasp.CustomHonorBattleLose
 #       Defines the amount of honor points that should be given to the
 #        team losing the Wintergrasp Battle.
 #       Requires OutdoorPvP.Wintergrasp.CustomHonorRewards = 1.
 #       Default: 1250
+
+OutdoorPvP.Wintergrasp.CustomHonorBattleLose = 1250
+
 #
 #   OutdoorPvP.Wintergrasp.CustomHonorDamageTower
 #       Defines the amount of honor points that should be given to the
 #        team for damaging a tower.
 #       Requires OutdoorPvP.Wintergrasp.CustomHonorRewards = 1.
 #       Default: 750
+
+OutdoorPvP.Wintergrasp.CustomHonorDamageTower = 750
+
 #
 #   OutdoorPvP.Wintergrasp.CustomHonorDestroyedTower
 #       Defines the amount of honor points that should be given to the
 #        team for destroying a tower.
 #       Requires OutdoorPvP.Wintergrasp.CustomHonorRewards = 1.
 #       Default: 750
+
+OutdoorPvP.Wintergrasp.CustomHonorDestroyedTower = 750
+
 #
 #   OutdoorPvP.Wintergrasp.CustomHonorDamagedBuilding
 #       Defines the amount of honor points that should be given to the
 #        team for damaged buildings after the battle.
 #       Requires OutdoorPvP.Wintergrasp.CustomHonorRewards = 1.
 #       Default: 750
+
+OutdoorPvP.Wintergrasp.CustomHonorDamagedBuilding = 750
+
 #
 #   OutdoorPvP.Wintergrasp.CustomHonorIntactBuilding
 #      Defines the amount of honor points that should be given to the
 #        team for intact buildings after the battle.
 #       Requires OutdoorPvP.Wintergrasp.CustomHonorRewards = 1.
 #       Default: 1500
+
+OutdoorPvP.Wintergrasp.CustomHonorIntactBuilding = 1500
+
 #
 #   OutdoorPvP.Wintergrasp.Antifarm.Enable
 #		Enable or Disable antifarm system
 #              (Default: 0)
+
+OutdoorPvP.Wintergrasp.Antifarm.Enable = 1
+
 #
 #   OutdoorPvP.Wintergrasp.Antifarm.Atk
 #		Min count atack players for antifarm
 #              (Default: 5)
+
+OutdoorPvP.Wintergrasp.Antifarm.Atk = 1
+
 #
 #   OutdoorPvP.Wintergrasp.Antifarm.Def
 #		Min count defense players for antifarm
 #              (Default: 5)
-#
-##########################################################
 
-OutdoorPvP.Wintergrasp.Enabled = 1
-OutdoorPvP.Wintergrasp.SaveState.Period = 60000
-OutdoorPvP.Wintergrasp.StartTime = 30
-OutdoorPvP.Wintergrasp.BattleTime = 30
-OutdoorPvP.Wintergrasp.Interval = 150
-OutdoorPvP.Wintergrasp.CustomHonorRewards = 0
-OutdoorPvP.Wintergrasp.CustomHonorBattleWin = 3000
-OutdoorPvP.Wintergrasp.CustomHonorBattleLose = 1250
-OutdoorPvP.Wintergrasp.CustomHonorDamageTower = 750
-OutdoorPvP.Wintergrasp.CustomHonorDestroyedTower = 750
-OutdoorPvP.Wintergrasp.CustomHonorDamagedBuilding = 750
-OutdoorPvP.Wintergrasp.CustomHonorIntactBuilding = 1500
-OutdoorPvP.Wintergrasp.Antifarm.Enable = 1
-OutdoorPvP.Wintergrasp.Antifarm.Atk = 1
 OutdoorPvP.Wintergrasp.Antifarm.Def = 1
+
+#
+###################################################################################################

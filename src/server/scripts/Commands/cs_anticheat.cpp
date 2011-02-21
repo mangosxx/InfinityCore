@@ -50,7 +50,7 @@ public:
             return false;
 
         Player* pTarget = NULL;
-        
+
         std::string strCommand;
 
         char* command = strtok((char*)args, " ");
@@ -61,12 +61,12 @@ public:
             normalizePlayerName(strCommand);
 
             pTarget = sObjectMgr->GetPlayer(strCommand.c_str()); //get player by name
-        }else 
+        }else
             pTarget = handler->getSelectedPlayer();
 
         if (!pTarget)
             return false;
-        
+
         WorldPacket data;
 
         // need copy to prevent corruption by strtok call in LineFromMessage original string
@@ -89,7 +89,7 @@ public:
             return false;
 
         Player* pTarget = NULL;
-        
+
         std::string strCommand;
 
         char* command = strtok((char*)args, " ");
@@ -100,7 +100,7 @@ public:
             normalizePlayerName(strCommand);
 
             pTarget = sObjectMgr->GetPlayer(strCommand.c_str()); //get player by name
-        }else 
+        }else
             pTarget = handler->getSelectedPlayer();
 
         if (!pTarget)
@@ -112,7 +112,7 @@ public:
 
         if (pTarget == handler->GetSession()->GetPlayer())
             return false;
-    
+
         // teleport both to jail.
         pTarget->TeleportTo(1,16226.5f,16403.6f,-64.5f,3.2f);
         handler->GetSession()->GetPlayer()->TeleportTo(1,16226.5f,16403.6f,-64.5f,3.2f);
@@ -143,9 +143,9 @@ public:
 
         if (!command)
             return true;
-        
+
         strCommand = command;
-        
+
         if (strCommand.compare("deleteall") == 0)
             CharacterDatabase.PExecute("DELETE FROM players_reports_status;");
         else
@@ -173,7 +173,7 @@ public:
 
         uint32 uiGUID = 0;
         Player* player = NULL;
-        
+
         if (command)
         {
             strCommand = command;
@@ -183,11 +183,11 @@ public:
 
             if (player)
                 uiGUID = player->GetGUIDLow();
-        }else 
+        }else
         {
             player = handler->getSelectedPlayer();
             if (player)
-                uiGUID = player->GetGUIDLow();  
+                uiGUID = player->GetGUIDLow();
         }
 
         if (uiGUID == 0)
@@ -195,7 +195,7 @@ public:
             handler->PSendSysMessage("There is no player.");
             return true;
         }
-        
+
         uint32 average = player->anticheatData.average;
         uint32 total_reports = player->anticheatData.total_reports;
         uint32 speed_reports = player->anticheatData.type_reports[0];
@@ -219,7 +219,7 @@ public:
         std::string strCommand;
 
         char* command = strtok((char*)args, " ");
-        
+
         if (!command)
             return true;
 
@@ -238,7 +238,7 @@ public:
             sWorld->setBoolConfig(CONFIG_ANTICHEAT_ENABLE,false);
             handler->SendSysMessage("The Anticheat System is now: Disabled!");
         }
-        
+
         return true;
     }
 
@@ -262,7 +262,7 @@ public:
                 do
                 {
                     Field *fieldsDB = resultDB->Fetch();
-     
+
                     uint64 guid = fieldsDB[0].GetUInt64();
                     uint32 average = fieldsDB[1].GetUInt32();
                     uint32 total_reports = fieldsDB[2].GetUInt32();
@@ -274,7 +274,7 @@ public:
         }
 
         resultDB = CharacterDatabase.Query("SELECT guid,average,total_reports FROM players_reports_status WHERE total_reports != 0 ORDER BY total_reports DESC LIMIT 3;");
-        
+
         // this should never happen
         if (!resultDB)
         {
@@ -287,7 +287,7 @@ public:
             do
             {
                 Field *fieldsDB = resultDB->Fetch();
-     
+
                 uint64 guid = fieldsDB[0].GetUInt64();
                 uint32 average = fieldsDB[1].GetUInt32();
                 uint32 total_reports = fieldsDB[2].GetUInt32();

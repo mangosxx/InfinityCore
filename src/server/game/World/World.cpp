@@ -1183,7 +1183,10 @@ void World::LoadConfigSettings(bool reload)
 
     // MySQL ping time interval
     m_int_configs[CONFIG_DB_PING_INTERVAL] = sConfig->GetIntDefault("MaxPingTime", 30);
-	
+
+    m_bool_configs[CONFIG_ANTICHEAT_ENABLE] = sConfig->GetBoolDefault("Anticheat.Enable", true);
+    m_int_configs[CONFIG_ANTICHEAT_REPORTS_INGAME_NOTIFICATION] = sConfig->GetIntDefault("Anticheat.ReportsForIngameWarnings", 70);
+
     //Wintergrasp
     m_bool_configs[CONFIG_OUTDOORPVP_WINTERGRASP_ENABLED]         = sConfig->GetBoolDefault("OutdoorPvP.Wintergrasp.Enabled", true);
     m_int_configs[CONFIG_OUTDOORPVP_WINTERGRASP_SAVESTATE_PERIOD] = sConfig->GetIntDefault("OutdoorPvP.Wintergrasp.SaveState.Period", 10000);
@@ -1201,9 +1204,6 @@ void World::LoadConfigSettings(bool reload)
     m_int_configs[CONFIG_CONFIG_OUTDOORPVP_WINTERGRASP_ANTIFARM_ATK]  = sConfig->GetIntDefault("OutdoorPvP.Wintergrasp.Antifarm.Atk", 5);
     m_int_configs[CONFIG_CONFIG_OUTDOORPVP_WINTERGRASP_ANTIFARM_DEF]  = sConfig->GetIntDefault("OutdoorPvP.Wintergrasp.Antifarm.Def", 5);
 
-    m_bool_configs[CONFIG_ANTICHEAT_ENABLE] = sConfig->GetBoolDefault("Anticheat.Enable", true);
-    m_int_configs[CONFIG_ANTICHEAT_REPORTS_INGAME_NOTIFICATION] = sConfig->GetIntDefault("Anticheat.ReportsForIngameWarnings", 70);
-    
     sScriptMgr->OnConfigLoad(reload);
 }
 
@@ -1633,7 +1633,7 @@ void World::SetInitialWorldSettings()
     sSmartScriptMgr->LoadSmartAIFromDB();
 
     ///- Initialize game time and timers
-    sLog->outDebug("DEBUG:: Initialize game time and timers");
+    sLog->outString("Initialize game time and timers");
     m_gameTime = time(NULL);
     m_startTime=m_gameTime;
 
@@ -1670,7 +1670,7 @@ void World::SetInitialWorldSettings()
     mail_timer = ((((localtime(&m_gameTime)->tm_hour + 20) % 24)* HOUR * IN_MILLISECONDS) / m_timers[WUPDATE_AUCTIONS].GetInterval());
                                                             //1440
     mail_timer_expires = ((DAY * IN_MILLISECONDS) / (m_timers[WUPDATE_AUCTIONS].GetInterval()));
-    sLog->outDebug("Mail timer set to: " UI64FMTD ", mail return is called every " UI64FMTD " minutes", uint64(mail_timer), uint64(mail_timer_expires));
+    sLog->outDetail("Mail timer set to: " UI64FMTD ", mail return is called every " UI64FMTD " minutes", uint64(mail_timer), uint64(mail_timer_expires));
 
     ///- Initilize static helper structures
     AIRegistry::Initialize();
@@ -2547,7 +2547,7 @@ void World::ProcessCliCommands()
     CliCommandHolder* command;
     while (cliCmdQueue.next(command))
     {
-        sLog->outDebug("CLI command under processing...");
+        sLog->outDetail("CLI command under processing...");
         zprint = command->m_print;
         callbackArg = command->m_callbackArg;
         CliHandler handler(callbackArg, zprint);
@@ -2588,9 +2588,9 @@ void World::SendAutoBroadcast()
         WorldPacket data(SMSG_NOTIFICATION, (msg.size()+1));
         data << msg;
         sWorld->SendGlobalMessage(&data);
-
     }
-    sLog->outDebug("AutoBroadcast: '%s'",msg.c_str());
+
+    sLog->outDetail("AutoBroadcast: '%s'",msg.c_str());
 }
 
 void World::UpdateRealmCharCount(uint32 accountId)

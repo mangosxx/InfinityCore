@@ -77,7 +77,7 @@ bool OutdoorPvPWG::SetupOutdoorPvP()
 
     //load worlstates
     QueryResult result = CharacterDatabase.PQuery("SELECT `entry`, `value` from `worldstates` where `entry` in ('31001','31002','31003') order by `entry`");
-     
+
     m_WSSaveTimer = sWorld->getIntConfig(CONFIG_OUTDOORPVP_WINTERGRASP_SAVESTATE_PERIOD);
 
     if (result)
@@ -282,7 +282,7 @@ bool OutdoorPvPWG::SetupOutdoorPvP()
         uint32 capturePointEntry = 0;
 
         switch(goData->id)
-        {    
+        {
             //West Goblin Workshops
             case 192028: // NW
             case 192030: // W
@@ -459,7 +459,7 @@ bool OutdoorPvPWG::SetupOutdoorPvP()
 }
 
 void OutdoorPvPWG::ProcessEvent(GameObject *obj, uint32 eventId)
-{     
+{
     if (obj->GetEntry() == 192829) // Titan Relic
     {
         if (obj->GetGOInfo()->goober.eventId == eventId && isWarTime() && /*MaingateDestroyed==true &&*/ m_gate &&  m_gate->damageState == DAMAGE_DESTROYED)
@@ -549,7 +549,7 @@ void OutdoorPvPWG::ProcessEvent(GameObject *obj, uint32 eventId)
                     {
                         if (getDefenderTeam()==TEAM_ALLIANCE)
                             TeamIDsound=OutdoorPvP_WG_SOUND_KEEP_ASSAULTED_HORDE; //Allience Worn Sound
-                        else 
+                        else
                             TeamIDsound=OutdoorPvP_WG_SOUND_KEEP_ASSAULTED_ALLIANCE;  //Horde Worn Sound
                         (*itr)->PlayDirectSound(TeamIDsound) ; // Wintergrasp Fortress under Siege
                     }
@@ -602,7 +602,7 @@ void OutdoorPvPWG::ProcessEvent(GameObject *obj, uint32 eventId)
                     {
                         if (getDefenderTeam()==TEAM_ALLIANCE)
                             TeamIDsound=OutdoorPvP_WG_SOUND_KEEP_CAPTURED_HORDE; //Allience Worn Sound
-                        else 
+                        else
                             TeamIDsound=OutdoorPvP_WG_SOUND_KEEP_CAPTURED_ALLIANCE;  //Horde Worn Sound
                         (*itr)->PlayDirectSound(TeamIDsound) ; // Wintergrasp Fortress under Siege
                     }
@@ -1554,7 +1554,7 @@ void OutdoorPvPWG::UpdateTenacityStack()
             newStack = int32((float(((hordeNum) - (allianceNum))/9.5))); // positive, should cast on alliance
         else if (allianceNum > hordeNum)
             newStack = int32((float(((allianceNum) - (hordeNum))/9.5))); // negative, should cast on horde
- 
+
     if (newStack == m_tenacityStack)
         return;
 
@@ -1644,7 +1644,10 @@ bool OutdoorPvPWG::Update(uint32 diff)
                 Map::PlayerList const &PlayerList = pMap->GetPlayers();
                 for (Map::PlayerList::const_iterator i = PlayerList.begin(); i != PlayerList.end(); ++i)
                 {
-                    if (getDefenderTeam() == TEAM_ALLIANCE)
+					//ugly implementation of parachutes, it should be handled and triggered by veichles
+					i->getSource()->ToPlayer()->CastSpell(i->getSource()->ToPlayer(),SPELL_PARACHUTE_WG,true);
+
+					if (getDefenderTeam() == TEAM_ALLIANCE)
                     {
                         if (i->getSource()->ToPlayer()->GetTeam() == ALLIANCE)
                         {
@@ -2016,7 +2019,7 @@ void OutdoorPvPWG::StartBattle()
             if (CountAtk<=CountDef)
                 sWorld->SendWorldText(LANG_BG_WG_WORLD_NO_ATK);
             if (CountDef<CountAtk)
-            {  
+            {
                 sWorld->SendWorldText(LANG_BG_WG_WORLD_NO_DEF);
                 m_changeDefender=true;
             }
@@ -2476,7 +2479,7 @@ void OPvPCapturePointWG::ChangeTeam(TeamId oldTeam)
     m_buildingState->SetTeam(m_team);
     // TODO: this may be sent twice
     m_wintergrasp->BroadcastStateChange(m_buildingState);
-    
+
     if (m_buildingState->building)
         m_buildingState->building->SetUInt32Value(GAMEOBJECT_FACTION, WintergraspFaction[m_team]);
 
@@ -2517,7 +2520,7 @@ class OutdoorPvP_wintergrasp : public OutdoorPvPScript
 {
     public:
         OutdoorPvP_wintergrasp() : OutdoorPvPScript("outdoorpvp_wg") { }
-        
+
         OutdoorPvP* GetOutdoorPvP() const
         {
             return new OutdoorPvPWG();

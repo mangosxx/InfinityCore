@@ -18,7 +18,7 @@
 
 #define CLIMB_ANGLE 1.9f
 
-AnticheatMgr::AnticheatMgr() 
+AnticheatMgr::AnticheatMgr()
 {
 }
 
@@ -52,7 +52,7 @@ void AnticheatMgr::BuildReport(Player* player,uint8 reportType)
     player->anticheatData.total_reports++;
 
     CharacterDatabase.PExecute("UPDATE players_reports_status SET %s=%u, total_reports=%u, average=%u WHERE guid=%u",report_type.c_str(),player->anticheatData.type_reports[reportType],player->anticheatData.total_reports,player->anticheatData.average,player->GetGUIDLow());
-    
+
     if (player->anticheatData.total_reports > sWorld->getIntConfig(CONFIG_ANTICHEAT_REPORTS_INGAME_NOTIFICATION))
     {
         // display warning at the center of the screen, hacky way?
@@ -113,12 +113,12 @@ void AnticheatMgr::FlyHackDetection(Player* player, MovementInfo movementInfo)
 {
     if (!player->anticheatData.lastMovementInfo.HasMovementFlag(MOVEMENTFLAG_FLYING))
         return;
-    
+
     if (player->HasAuraType(SPELL_AURA_FLY) ||
         player->HasAuraType(SPELL_AURA_MOD_INCREASE_MOUNTED_FLIGHT_SPEED) ||
         player->HasAuraType(SPELL_AURA_MOD_INCREASE_FLIGHT_SPEED))
         return;
-    
+
     sLog->outError("FlyHack Player LowGuid %u",player->GetGUIDLow());
     BuildReport(player,FLY_HACK_REPORT);
 }
@@ -137,7 +137,7 @@ void AnticheatMgr::TeleportPlaneHackDetection(Player* player, MovementInfo movem
     float x, y, z;
     player->GetPosition(x, y, z);
     float ground_Z = player->GetMap()->GetHeight(x, y, z);
-    float z_diff = fabs(ground_Z - z);   
+    float z_diff = fabs(ground_Z - z);
 
     // we are not really walking there
     if (z_diff > 1.0f)
@@ -177,8 +177,8 @@ void AnticheatMgr::ClimbHackDetection(Player *player, MovementInfo movementInfo,
         player->anticheatData.lastOpcode != MSG_MOVE_HEARTBEAT)
         return;
 
-    if (player->IsInWater() || 
-        player->IsFlying() || 
+    if (player->IsInWater() ||
+        player->IsFlying() ||
         player->IsFalling())
         return;
 
@@ -216,7 +216,7 @@ void AnticheatMgr::SpeedHackDetection(Player* player,MovementInfo movementInfo)
 
     // how many yards the player can do in one sec.
     uint32 speedRate = (uint32)(player->GetSpeed(UnitMoveType(moveType)) + movementInfo.j_xyspeed);
-    
+
     // how long the player took to move to here.
     uint32 timeDiff = getMSTimeDiff(player->anticheatData.lastMovementInfo.time,movementInfo.time);
 
@@ -227,7 +227,7 @@ void AnticheatMgr::SpeedHackDetection(Player* player,MovementInfo movementInfo)
     uint32 clientSpeedRate = distance2D * 1000 / timeDiff;
 
     //sLog->outError("fallxy %f fallz %f Distance2D %u clientSpeedRate %u speedRate %u timeDiff %u ",movementInfo.j_xyspeed, movementInfo.j_zspeed,distance2D,clientSpeedRate,speedRate,timeDiff);
-    
+
     // we did the (uint32) cast to accept a margin of tolerance
     if (clientSpeedRate > speedRate)
     {
