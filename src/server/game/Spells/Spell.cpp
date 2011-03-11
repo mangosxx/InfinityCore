@@ -55,7 +55,6 @@
 #include "OutdoorPvPWG.h"
 #include "OutdoorPvPMgr.h"
 
-
 #define SPELL_CHANNEL_UPDATE_INTERVAL (1 * IN_MILLISECONDS)
 
 extern pEffect SpellEffects[TOTAL_SPELL_EFFECTS];
@@ -428,6 +427,7 @@ m_spellInfo(sSpellMgr->GetSpellForDifficultyFromSpell(info, Caster)),
 m_caster(Caster), m_spellValue(new SpellValue(m_spellInfo))
 {
     m_customAttr = sSpellMgr->GetSpellCustomAttr(m_spellInfo->Id);
+    m_customError = SPELL_CUSTOM_ERROR_NONE;
     m_skipCheck = skipCheck;
     m_selfContainer = NULL;
     m_referencedFromCurrentSpell = false;
@@ -3745,10 +3745,10 @@ void Spell::SendCastResult(SpellCastResult result)
     if (m_caster->ToPlayer()->GetSession()->PlayerLoading())  // don't send cast results at loading time
         return;
 
-    SendCastResult((Player*)m_caster,m_spellInfo,m_cast_count,result);
+    SendCastResult(m_caster->ToPlayer(), m_spellInfo, m_cast_count, result, m_customError);
 }
 
-void Spell::SendCastResult(Player* caster, SpellEntry const* spellInfo, uint8 cast_count, SpellCastResult result)
+void Spell::SendCastResult(Player* caster, SpellEntry const* spellInfo, uint8 cast_count, SpellCastResult result, SpellCustomErrors customError /*= SPELL_CUSTOM_ERROR_NONE*/)
 {
     if (result == SPELL_CAST_OK)
         return;
@@ -3810,6 +3810,9 @@ void Spell::SendCastResult(Player* caster, SpellEntry const* spellInfo, uint8 ca
                  data << uint32(pProto->ItemLimitCategory);
              break;
         }
+        case SPELL_FAILED_CUSTOM_ERROR:
+            data << uint32(customError);
+            break;
         default:
             break;
     }
@@ -4662,8 +4665,6 @@ void Spell::HandleEffects(Unit *pUnitTarget,Item *pItemTarget,GameObject *pGOTar
 
 SpellCastResult Spell::CheckCast(bool strict)
 {
-	OutdoorPvPWG *pvpWG = (OutdoorPvPWG*)sOutdoorPvPMgr->GetOutdoorPvPToZoneId(4197);
-
     // check death state
     if (!m_IsTriggeredSpell && !m_caster->isAlive() && !(m_spellInfo->Attributes & SPELL_ATTR0_PASSIVE) && !(m_spellInfo->Attributes & SPELL_ATTR0_CASTABLE_WHILE_DEAD))
         return SPELL_FAILED_CASTER_DEAD;
@@ -5014,6 +5015,11 @@ SpellCastResult Spell::CheckCast(bool strict)
             return castResult;
     }
 
+    // script hook
+    castResult = CallScriptCheckCastHandlers();
+    if (castResult != SPELL_CAST_OK)
+        return castResult;
+
     for (int i = 0; i < MAX_SPELL_EFFECTS; i++)
     {
         // for effects of spells that have only one target
@@ -5327,13 +5333,20 @@ SpellCastResult Spell::CheckCast(bool strict)
                     return SPELL_FAILED_BAD_TARGETS;
 
                 // check if our map is dungeon
-                if (sMapStore.LookupEntry(m_caster->GetMapId())->IsDungeon())
+                MapEntry const* map = sMapStore.LookupEntry(m_caster->GetMapId());
+                if (map->IsDungeon())
                 {
-                    Map const* pMap = m_caster->GetMap();
-                    InstanceTemplate const* instance = ObjectMgr::GetInstanceTemplate(pMap->GetId());
+                    uint32 mapId = m_caster->GetMap()->GetId();
+                    Difficulty difficulty = m_caster->GetMap()->GetDifficulty();
+                    if (map->IsRaid())
+                        if (InstancePlayerBind* targetBind = target->GetBoundInstance(mapId, difficulty))
+                            if (targetBind->perm && targetBind != m_caster->ToPlayer()->GetBoundInstance(mapId, difficulty))
+                                return SPELL_FAILED_TARGET_LOCKED_TO_RAID_INSTANCE;
+
+                    InstanceTemplate const* instance = ObjectMgr::GetInstanceTemplate(mapId);
                     if (!instance)
                         return SPELL_FAILED_TARGET_NOT_IN_INSTANCE;
-                    if (!target->Satisfy(sObjectMgr->GetAccessRequirement(pMap->GetId(), pMap->GetDifficulty()), pMap->GetId()))
+                    if (!target->Satisfy(sObjectMgr->GetAccessRequirement(mapId, difficulty), mapId))
                         return SPELL_FAILED_BAD_TARGETS;
                 }
                 break;
@@ -5530,9 +5543,9 @@ SpellCastResult Spell::CheckCast(bool strict)
                     {
                         if (pArea->flags & AREA_FLAG_NO_FLY_ZONE)
                             return m_IsTriggeredSpell ? SPELL_FAILED_DONT_REPORT : SPELL_FAILED_NOT_HERE;
-                        // Wintergrasp Antifly check
                         if (sWorld->getBoolConfig(CONFIG_OUTDOORPVP_WINTERGRASP_ENABLED))
                         {
+                          OutdoorPvPWG *pvpWG = (OutdoorPvPWG*)sOutdoorPvPMgr->GetOutdoorPvPToZoneId(4197);
                           if (m_originalCaster->GetZoneId() == 4197 && pvpWG && pvpWG != 0  && pvpWG->isWarTime()==true)
                           return m_IsTriggeredSpell ? SPELL_FAILED_DONT_REPORT : SPELL_FAILED_NOT_HERE;
                         }
@@ -6980,16 +6993,16 @@ SpellCastResult Spell::CanOpenLock(uint32 effIndex, uint32 lockId, SkillType& sk
 
                 if (skillId != SKILL_NONE)
                 {
-                    // skill bonus provided by casting spell (mostly item spells)
-                    // add the damage modifier from the spell casted (cheat lock / skeleton key etc.)
-                    uint32 spellSkillBonus = uint32(CalculateDamage(effIndex, NULL));
                     reqSkillValue = lockInfo->Skill[j];
 
                     // castitem check: rogue using skeleton keys. the skill values should not be added in this case.
                     skillValue = m_CastItem || m_caster->GetTypeId()!= TYPEID_PLAYER ?
                         0 : m_caster->ToPlayer()->GetSkillValue(skillId);
 
-                    skillValue += spellSkillBonus;
+                    // skill bonus provided by casting spell (mostly item spells)
+                    // add the damage modifier from the spell casted (cheat lock / skeleton key etc.)
+                    if (m_spellInfo->EffectImplicitTargetA[effIndex] == TARGET_GAMEOBJECT_ITEM || m_spellInfo->EffectImplicitTargetB[effIndex] == TARGET_GAMEOBJECT_ITEM)
+                        skillValue += uint32(CalculateDamage(effIndex, NULL));
 
                     if (skillValue < reqSkillValue)
                         return SPELL_FAILED_LOW_CASTLEVEL;
@@ -7227,6 +7240,25 @@ void Spell::PrepareScriptHitHandlers()
 {
     for (std::list<SpellScript *>::iterator scritr = m_loadedScripts.begin(); scritr != m_loadedScripts.end() ; ++scritr)
         (*scritr)->_InitHit();
+}
+
+SpellCastResult Spell::CallScriptCheckCastHandlers()
+{
+    SpellCastResult retVal = SPELL_CAST_OK;
+    for (std::list<SpellScript *>::iterator scritr = m_loadedScripts.begin(); scritr != m_loadedScripts.end() ; ++scritr)
+    {
+        (*scritr)->_PrepareScriptCall(SPELL_SCRIPT_HOOK_CHECK_CAST);
+        std::list<SpellScript::CheckCastHandler>::iterator hookItrEnd = (*scritr)->OnCheckCast.end(), hookItr = (*scritr)->OnCheckCast.begin();
+        for (; hookItr != hookItrEnd; ++hookItr)
+        {
+            SpellCastResult tempResult = (*hookItr).Call(*scritr);
+            if (retVal == SPELL_CAST_OK)
+                retVal = tempResult;
+        }
+
+        (*scritr)->_FinishScriptCall();
+    }
+    return retVal;
 }
 
 bool Spell::CallScriptEffectHandlers(SpellEffIndex effIndex)

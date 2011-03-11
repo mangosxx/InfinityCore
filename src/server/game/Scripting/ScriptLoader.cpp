@@ -1184,7 +1184,6 @@ void AddNorthrendScripts()
     AddSC_zuldrak();
     AddSC_crystalsong_forest();
     AddSC_isle_of_conquest();
-
     AddSC_wintergrasp();
 #endif
 }

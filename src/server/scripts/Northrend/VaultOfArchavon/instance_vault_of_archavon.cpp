@@ -52,9 +52,9 @@ class instance_archavon : public InstanceMapScript
                     if (OutdoorPvPWG *pvpWG = (OutdoorPvPWG*)sOutdoorPvPMgr->GetOutdoorPvPToZoneId(4197))
                     {
                        if ((pvpWG->getDefenderTeam()==TEAM_ALLIANCE) && (m_player->ToPlayer()->GetTeam() == ALLIANCE))
-                       return;
+                           return;
                        else if ((pvpWG->getDefenderTeam()!=TEAM_ALLIANCE) && (m_player->ToPlayer()->GetTeam() == HORDE))
-                       return;
+                           return;
                        else m_player->CastSpell(m_player, SPELL_TELEPORT_FORTRESS, true);
                     }
                 }

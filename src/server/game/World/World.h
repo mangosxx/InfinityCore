@@ -313,7 +313,6 @@ enum WorldIntConfigs
     CONFIG_DB_PING_INTERVAL,
     CONFIG_PRESERVE_CUSTOM_CHANNEL_DURATION,
     CONFIG_PERSISTENT_CHARACTER_CLEAN_FLAGS,
-    CONFIG_ANTICHEAT_REPORTS_INGAME_NOTIFICATION,
     CONFIG_MAX_INSTANCES_PER_HOUR,
     CONFIG_OUTDOORPVP_WINTERGRASP_START_TIME,
     CONFIG_OUTDOORPVP_WINTERGRASP_BATTLE_TIME,
@@ -327,6 +326,7 @@ enum WorldIntConfigs
     CONFIG_OUTDOORPVP_WINTERGRASP_SAVESTATE_PERIOD,
     CONFIG_CONFIG_OUTDOORPVP_WINTERGRASP_ANTIFARM_ATK,
     CONFIG_CONFIG_OUTDOORPVP_WINTERGRASP_ANTIFARM_DEF,
+	CONFIG_ANTICHEAT_REPORTS_INGAME_NOTIFICATION,
     INT_CONFIG_VALUE_COUNT
 };
 
@@ -353,8 +353,11 @@ enum Rates
     RATE_DROP_ITEM_REFERENCED_AMOUNT,
     RATE_DROP_MONEY,
     RATE_XP_KILL,
+    RATE_XP_KILL_PREMIUM,
     RATE_XP_QUEST,
+    RATE_XP_QUEST_PREMIUM,
     RATE_XP_EXPLORE,
+    RATE_XP_EXPLORE_PREMIUM,
     RATE_REPAIRCOST,
     RATE_REPUTATION_GAIN,
     RATE_REPUTATION_LOWLEVEL_KILL,
@@ -756,9 +759,6 @@ class World
 
         bool isEventKillStart;
 
-        uint32 GetCleaningFlags() { return m_CleaningFlags; }
-        void   SetCleaningFlags(uint32 flags) { m_CleaningFlags = flags; }
-
         uint32 GetWintergrapsTimer() { return m_WintergrapsTimer; }
         uint32 GetWintergrapsState() { return m_WintergrapsState; }
         uint32 m_WintergrapsTimer;
@@ -770,6 +770,8 @@ class World
             m_WintergrapsState = state;
         }
 
+        uint32 GetCleaningFlags() { return m_CleaningFlags; }
+        void   SetCleaningFlags(uint32 flags) { m_CleaningFlags = flags; }
     protected:
         void _UpdateGameTime();
         // callback for UpdateRealmCharacters

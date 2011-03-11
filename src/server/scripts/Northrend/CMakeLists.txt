@@ -2,7 +2,6 @@ set(scripts_STAT_SRCS
   ${scripts_STAT_SRCS}
   Northrend/isle_of_conquest.cpp
   Northrend/storm_peaks.cpp
-  Northrend/wintergrasp.cpp
   Northrend/Ulduar/HallsOfLightning/instance_halls_of_lightning.cpp
   Northrend/Ulduar/HallsOfLightning/boss_bjarngrim.cpp
   Northrend/Ulduar/HallsOfLightning/halls_of_lightning.h
@@ -175,6 +174,13 @@ set(scripts_STAT_SRCS
   Northrend/DraktharonKeep/drak_tharon_keep.h
   Northrend/DraktharonKeep/boss_tharon_ja.cpp
   Northrend/DraktharonKeep/boss_dred.cpp
+  Northrend/RubySanctum/boss_baltharus.cpp
+  Northrend/RubySanctum/boss_halion.cpp
+  Northrend/RubySanctum/boss_ragefire.cpp
+  Northrend/RubySanctum/boss_zarithrian.cpp
+  Northrend/RubySanctum/instance_ruby_sanctum.cpp
+  Northrend/RubySanctum/ruby_sanctum.h
+  Northrend/wintergrasp.cpp
 )
 
 message("  -> Prepared: Northrend")

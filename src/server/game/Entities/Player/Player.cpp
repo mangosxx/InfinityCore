@@ -56,6 +56,7 @@
 #include "BattlegroundMgr.h"
 #include "OutdoorPvP.h"
 #include "OutdoorPvPMgr.h"
+#include "OutdoorPvPWG.h"
 #include "ArenaTeam.h"
 #include "Chat.h"
 #include "Spell.h"
@@ -70,7 +71,6 @@
 #include "LFGMgr.h"
 #include "CharacterDatabaseCleaner.h"
 #include "InstanceScript.h"
-#include "OutdoorPvPWG.h"
 #include "Config.h"
 #include <cmath>
 
@@ -634,15 +634,15 @@ Player::Player (WorldSession *session): Unit(), m_achievementMgr(this), m_reputa
 
     isDebugAreaTriggers = false;
 
-    sAnticheatMgr->DeletePlayerReport(this);
-
     SetPendingBind(NULL, 0);
+	
+	sAnticheatMgr->DeletePlayerReport(this);
 }
 
 Player::~Player ()
 {
-    sAnticheatMgr->DeletePlayerReport(this);
-
+	sAnticheatMgr->DeletePlayerReport(this);
+	
     // it must be unloaded already in PlayerLogout and accessed only for loggined player
     //m_social = NULL;
 
@@ -2585,7 +2585,7 @@ void Player::SetGameMaster(bool on)
         getHostileRefManager().setOnlineOfflineState(false);
         CombatStopWithPets();
 
-        SetPhaseMask(PHASEMASK_ANYWHERE, false);            // see and visible in all phases
+        SetPhaseMask(uint32(PHASEMASK_ANYWHERE), false);    // see and visible in all phases
         m_serverSideVisibilityDetect.SetValue(SERVERSIDE_VISIBILITY_GM, GetSession()->GetSecurity());
     }
     else
@@ -2783,10 +2783,10 @@ void Player::GiveLevel(uint8 level)
     sScriptMgr->OnPlayerLevelChanged(this, level);
 
     PlayerLevelInfo info;
-    sObjectMgr->GetPlayerLevelInfo(getRace(),getClass(),level,&info);
+    sObjectMgr->GetPlayerLevelInfo(getRace(), getClass(), level, &info);
 
     PlayerClassLevelInfo classInfo;
-    sObjectMgr->GetPlayerClassLevelInfo(getClass(),level,&classInfo);
+    sObjectMgr->GetPlayerClassLevelInfo(getClass(), level, &classInfo);
 
     // send levelup info to client
     WorldPacket data(SMSG_LEVELUP_INFO, (4+4+MAX_POWERS*4+MAX_STATS*4));
@@ -3024,10 +3024,11 @@ void Player::InitStatsForLevel(bool reapplyMods)
     // cleanup unit flags (will be re-applied if need at aura load).
     RemoveFlag(UNIT_FIELD_FLAGS,
         UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_DISABLE_MOVE | UNIT_FLAG_NOT_ATTACKABLE_1 |
+        UNIT_FLAG_OOC_NOT_ATTACKABLE | UNIT_FLAG_PASSIVE  | UNIT_FLAG_LOOTING          |
         UNIT_FLAG_PET_IN_COMBAT  | UNIT_FLAG_SILENCED     | UNIT_FLAG_PACIFIED         |
         UNIT_FLAG_STUNNED        | UNIT_FLAG_IN_COMBAT    | UNIT_FLAG_DISARMED         |
         UNIT_FLAG_CONFUSED       | UNIT_FLAG_FLEEING      | UNIT_FLAG_NOT_SELECTABLE   |
-        UNIT_FLAG_SKINNABLE      | UNIT_FLAG_MOUNT        | UNIT_FLAG_TAXI_FLIGHT);
+        UNIT_FLAG_SKINNABLE      | UNIT_FLAG_MOUNT        | UNIT_FLAG_TAXI_FLIGHT      );
     SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PVP_ATTACKABLE);   // must be set
 
     SetFlag(UNIT_FIELD_FLAGS_2,UNIT_FLAG2_REGENERATE_POWER);// must be set
@@ -4541,7 +4542,7 @@ void Player::DeleteFromDB(uint64 playerguid, uint32 accountId, bool updateRealmC
     // the player was uninvited already on logout so just remove from group
     QueryResult resultGroup = CharacterDatabase.PQuery("SELECT guid FROM group_member WHERE memberGuid=%u", guid);
     if (resultGroup)
-        if (Group* group = sObjectMgr->GetGroupByGUID((*resultGroup)[0].GetUInt32()))
+        if (Group* group = sObjectMgr->GetGroupByStorageId((*resultGroup)[0].GetUInt32()))
             RemoveFromGroup(group, playerguid);
 
     // Remove signs from petitions (also remove petitions if owner);
@@ -4660,7 +4661,9 @@ void Player::DeleteFromDB(uint64 playerguid, uint32 accountId, bool updateRealmC
             }
 
             trans->PAppend("DELETE FROM characters WHERE guid = '%u'",guid);
-            trans->PAppend("DELETE FROM character_account_data WHERE guid = '%u'",guid);
+            PreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_DEL_PLAYER_ACCOUNT_DATA);
+            stmt->setUInt32(0, guid);
+            trans->Append(stmt);
             trans->PAppend("DELETE FROM character_declinedname WHERE guid = '%u'",guid);
             trans->PAppend("DELETE FROM character_action WHERE guid = '%u'",guid);
             trans->PAppend("DELETE FROM character_aura WHERE guid = '%u'",guid);
@@ -6633,7 +6636,8 @@ void Player::CheckAreaExploreAndOutdoor()
                 {
                     XP = uint32(sObjectMgr->GetBaseXP(p->area_level)*sWorld->getRate(RATE_XP_EXPLORE));
                 }
-
+                if(GetSession()->IsPremium())
+                XP *= sWorld->getRate(RATE_XP_EXPLORE_PREMIUM);
                 GiveXP(XP, NULL);
                 SendExplorationExperience(area,XP);
             }
@@ -9469,7 +9473,7 @@ void Player::SetSheath(SheathState sheathed)
 
 uint8 Player::FindEquipSlot(ItemPrototype const* proto, uint32 slot, bool swap) const
 {
-    uint8 pClass = getClass();
+    uint8 playerClass = getClass();
 
     uint8 slots[4];
     slots[0] = NULL_SLOT;
@@ -9520,7 +9524,7 @@ uint8 Player::FindEquipSlot(ItemPrototype const* proto, uint32 slot, bool swap) 
             slots[1] = EQUIPMENT_SLOT_TRINKET2;
             break;
         case INVTYPE_CLOAK:
-            slots[0] =  EQUIPMENT_SLOT_BACK;
+            slots[0] = EQUIPMENT_SLOT_BACK;
             break;
         case INVTYPE_WEAPON:
         {
@@ -9531,7 +9535,7 @@ uint8 Player::FindEquipSlot(ItemPrototype const* proto, uint32 slot, bool swap) 
             if (CanDualWield())
                 slots[1] = EQUIPMENT_SLOT_OFFHAND;
             break;
-        };
+        }
         case INVTYPE_SHIELD:
             slots[0] = EQUIPMENT_SLOT_OFFHAND;
             break;
@@ -9540,13 +9544,26 @@ uint8 Player::FindEquipSlot(ItemPrototype const* proto, uint32 slot, bool swap) 
             break;
         case INVTYPE_2HWEAPON:
             slots[0] = EQUIPMENT_SLOT_MAINHAND;
-            if (Item *mhWeapon = GetItemByPos(INVENTORY_SLOT_BAG_0, EQUIPMENT_SLOT_MAINHAND))
-                if (ItemPrototype const *mhWeaponProto = mhWeapon->GetProto())
+            if (Item* mhWeapon = GetItemByPos(INVENTORY_SLOT_BAG_0, EQUIPMENT_SLOT_MAINHAND))
+            {
+                if (ItemPrototype const* mhWeaponProto = mhWeapon->GetProto())
+                {
                     if (mhWeaponProto->SubClass == ITEM_SUBCLASS_WEAPON_POLEARM || mhWeaponProto->SubClass == ITEM_SUBCLASS_WEAPON_STAFF)
                     {
-                        const_cast<Player *>(this)->AutoUnequipOffhandIfNeed(true);
+                        const_cast<Player*>(this)->AutoUnequipOffhandIfNeed(true);
                         break;
                     }
+                }
+            }
+
+            if (Item* ohWeapon = GetItemByPos(INVENTORY_SLOT_BAG_0, EQUIPMENT_SLOT_OFFHAND))
+            {
+                if (proto->SubClass == ITEM_SUBCLASS_WEAPON_POLEARM || proto->SubClass == ITEM_SUBCLASS_WEAPON_STAFF)
+                {
+                    const_cast<Player*>(this)->AutoUnequipOffhandIfNeed(true);
+                    break;
+                }
+            }
             if (CanDualWield() && CanTitanGrip() && proto->SubClass != ITEM_SUBCLASS_WEAPON_POLEARM && proto->SubClass != ITEM_SUBCLASS_WEAPON_STAFF)
                 slots[1] = EQUIPMENT_SLOT_OFFHAND;
             break;
@@ -9576,26 +9593,26 @@ uint8 Player::FindEquipSlot(ItemPrototype const* proto, uint32 slot, bool swap) 
             break;
         case INVTYPE_RELIC:
         {
-            switch(proto->SubClass)
+            switch (proto->SubClass)
             {
                 case ITEM_SUBCLASS_ARMOR_LIBRAM:
-                    if (pClass == CLASS_PALADIN)
+                    if (playerClass == CLASS_PALADIN)
                         slots[0] = EQUIPMENT_SLOT_RANGED;
                     break;
                 case ITEM_SUBCLASS_ARMOR_IDOL:
-                    if (pClass == CLASS_DRUID)
+                    if (playerClass == CLASS_DRUID)
                         slots[0] = EQUIPMENT_SLOT_RANGED;
                     break;
                 case ITEM_SUBCLASS_ARMOR_TOTEM:
-                    if (pClass == CLASS_SHAMAN)
+                    if (playerClass == CLASS_SHAMAN)
                         slots[0] = EQUIPMENT_SLOT_RANGED;
                     break;
                 case ITEM_SUBCLASS_ARMOR_MISC:
-                    if (pClass == CLASS_WARLOCK)
+                    if (playerClass == CLASS_WARLOCK)
                         slots[0] = EQUIPMENT_SLOT_RANGED;
                     break;
                 case ITEM_SUBCLASS_ARMOR_SIGIL:
-                    if (pClass == CLASS_DEATH_KNIGHT)
+                    if (playerClass == CLASS_DEATH_KNIGHT)
                         slots[0] = EQUIPMENT_SLOT_RANGED;
                     break;
             }
@@ -14697,6 +14714,9 @@ void Player::RewardQuest(Quest const *pQuest, uint32 reward, Object* questGiver,
     for (Unit::AuraEffectList::const_iterator i = ModXPPctAuras.begin(); i != ModXPPctAuras.end(); ++i)
         AddPctN(XP, (*i)->GetAmount());
 
+    if (GetSession()->IsPremium())
+        XP *= sWorld->getRate(RATE_XP_QUEST_PREMIUM);
+
     int32 moneyRew = 0;
     if (getLevel() < sWorld->getIntConfig(CONFIG_MAX_PLAYER_LEVEL))
         GiveXP(XP, NULL);
@@ -17573,7 +17593,7 @@ void Player::_LoadGroup(PreparedQueryResult result)
     //QueryResult *result = CharacterDatabase.PQuery("SELECT guid FROM group_member WHERE memberGuid=%u", GetGUIDLow());
     if (result)
     {
-        if (Group* group = sObjectMgr->GetGroupByGUID((*result)[0].GetUInt32()))
+        if (Group* group = sObjectMgr->GetGroupByStorageId((*result)[0].GetUInt32()))
         {
             uint8 subgroup = group->GetMemberGroup(GetGUID());
             SetGroup(group, subgroup);

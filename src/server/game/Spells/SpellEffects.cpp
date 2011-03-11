@@ -49,6 +49,7 @@
 #include "BattlegroundEY.h"
 #include "BattlegroundWS.h"
 #include "OutdoorPvPMgr.h"
+#include "OutdoorPvPWG.h"
 #include "Language.h"
 #include "SocialMgr.h"
 #include "Util.h"
@@ -62,7 +63,6 @@
 #include "Vehicle.h"
 #include "ScriptMgr.h"
 #include "GameObjectAI.h"
-#include "OutdoorPvPWG.h"
 
 pEffect SpellEffects[TOTAL_SPELL_EFFECTS]=
 {
@@ -197,7 +197,7 @@ pEffect SpellEffects[TOTAL_SPELL_EFFECTS]=
     &Spell::EffectApplyAreaAura,                            //128 SPELL_EFFECT_APPLY_AREA_AURA_FRIEND
     &Spell::EffectApplyAreaAura,                            //129 SPELL_EFFECT_APPLY_AREA_AURA_ENEMY
     &Spell::EffectRedirectThreat,                           //130 SPELL_EFFECT_REDIRECT_THREAT
-    &Spell::EffectPlayerNotification,                       //131 SPELL_EFFECT_PLAYER_NOTIFICATION
+    &Spell::EffectPlayerNotification,                       //131 SPELL_EFFECT_PLAYER_NOTIFICATION      sound id in misc value (SoundEntries.dbc)
     &Spell::EffectPlayMusic,                                //132 SPELL_EFFECT_PLAY_MUSIC               sound id in misc value (SoundEntries.dbc)
     &Spell::EffectUnlearnSpecialization,                    //133 SPELL_EFFECT_UNLEARN_SPECIALIZATION   unlearn profession specialization
     &Spell::EffectKillCredit,                               //134 SPELL_EFFECT_KILL_CREDIT              misc value is creature entry
@@ -1168,7 +1168,7 @@ void Spell::EffectDummy(SpellEffIndex effIndex)
                                 // use 99 because it is 3d search
                                 SearchAreaTarget(unitList, 99, PUSH_DST_CENTER, SPELL_TARGETS_ENTRY, 33114);
                                 float minDist = 99 * 99;
-                                Vehicle *target = NULL;
+                                Unit *target = NULL;
                                 for (std::list<Unit*>::iterator itr = unitList.begin(); itr != unitList.end(); ++itr)
                                 {
                                     if (Vehicle *seat = (*itr)->GetVehicleKit())
@@ -1180,11 +1180,11 @@ void Spell::EffectDummy(SpellEffIndex effIndex)
                                                     if (dist < minDist)
                                                     {
                                                         minDist = dist;
-                                                        target = seat;
+                                                        target = (*itr);
                                                     }
                                                 }
                                 }
-                                if (target && target->GetBase()->IsWithinDist2d(&m_targets.m_dstPos, GetSpellRadius(m_spellInfo, effIndex, false) * 2)) // now we use *2 because the location of the seat is not correct
+                                if (target && target->IsWithinDist2d(&m_targets.m_dstPos, GetSpellRadius(m_spellInfo, effIndex, false) * 2)) // now we use *2 because the location of the seat is not correct
                                     passenger->EnterVehicle(target, 0);
                                 else
                                 {
@@ -1633,13 +1633,6 @@ void Spell::EffectForceCast(SpellEffIndex effIndex)
                 m_caster->CastSpell(unitTarget, 72380, true);   // additional spell cast
                 break;
         }
-    }
-
-    switch (triggered_spell_id)
-    {
-        case 62056: case 63985:         // Stone Grip Forcecast (10m, 25m)
-            unitTarget->CastSpell(unitTarget, spellInfo, true);     // Don't send m_originalCasterGUID param here or underlying
-            return;                                                 // AureEffect::HandleAuraControlVehicle will fail on caster == target
     }
 
     Unit * caster = GetTriggeredSpellCaster(spellInfo, m_caster, unitTarget);
@@ -2609,6 +2602,9 @@ void Spell::EffectEnergize(SpellEffIndex effIndex)
         case 48542:                                         // Revitalize
             damage = int32(CalculatePctN(unitTarget->GetMaxPower(power), damage));
             break;
+        case 71132:                                         // Glyph of Shadow Word: Pain
+            damage = int32(CalculatePctN(unitTarget->GetCreateMana(), 1));  // set 1 as value, missing in dbc
+            break;
         default:
             break;
     }
@@ -3138,7 +3134,7 @@ void Spell::EffectSummonType(SpellEffIndex effIndex)
         {
             float x, y, z;
             m_caster->GetClosePoint(x, y, z, DEFAULT_WORLD_OBJECT_SIZE);
-            summon = m_caster->GetMap()->SummonCreature(entry, pos, properties, duration, m_caster);
+            summon = m_originalCaster->GetMap()->SummonCreature(entry, pos, properties, duration, m_caster);
             if (!summon || !summon->IsVehicle())
                 return;
 
@@ -3146,10 +3142,21 @@ void Spell::EffectSummonType(SpellEffIndex effIndex)
             {
                 SpellEntry const *spellProto = sSpellStore.LookupEntry(SpellMgr::CalculateSpellEffectAmount(m_spellInfo, effIndex));
                 if (spellProto)
-                    m_caster->CastSpell(summon, spellProto, true);
+                {
+                    m_originalCaster->CastSpell(summon, spellProto, true);
+                    return;
+                }
             }
 
-            m_caster->EnterVehicle(summon->GetVehicleKit());
+            // Hard coded enter vehicle spell
+            m_originalCaster->CastSpell(summon, VEHICLE_SPELL_RIDE_HARDCODED, true);
+
+            summon->SetUInt32Value(UNIT_CREATED_BY_SPELL, m_spellInfo->Id);
+            uint32 faction = properties->Faction;
+            if (!faction)
+                faction = m_originalCaster->getFaction();
+
+            summon->setFaction(faction);
             break;
         }
     }
@@ -4382,22 +4389,22 @@ void Spell::EffectScriptEffect(SpellEffIndex effIndex)
             {
                 //Teleport to Lake Wintergrasp
                 case 58622:
-                   {
-                  if(OutdoorPvPWG *pvpWG = (OutdoorPvPWG*)sOutdoorPvPMgr->GetOutdoorPvPToZoneId(4197))
-                        if(unitTarget->getLevel() > 74)
-                        {
-                        if ((pvpWG->getDefenderTeam()==TEAM_ALLIANCE) && (unitTarget->ToPlayer()->GetTeam() == ALLIANCE))
-                        unitTarget->CastSpell(unitTarget, SPELL_TELEPORT_FORTRESS, true);
-                        else if ((pvpWG->getDefenderTeam()==TEAM_ALLIANCE) && (unitTarget->ToPlayer()->GetTeam() == HORDE))
-                        unitTarget->CastSpell(unitTarget, SPELL_TELEPORT_HORDE_CAMP, true);
+                {
+                  if (OutdoorPvPWG *pvpWG = (OutdoorPvPWG*)sOutdoorPvPMgr->GetOutdoorPvPToZoneId(4197))
+                     if (unitTarget->getLevel() > 74)
+                     {
+                       if ((pvpWG->getDefenderTeam()==TEAM_ALLIANCE) && (unitTarget->ToPlayer()->GetTeam() == ALLIANCE))
+                          unitTarget->CastSpell(unitTarget, SPELL_TELEPORT_FORTRESS, true);
+                       else if ((pvpWG->getDefenderTeam()==TEAM_ALLIANCE) && (unitTarget->ToPlayer()->GetTeam() == HORDE))
+                          unitTarget->CastSpell(unitTarget, SPELL_TELEPORT_HORDE_CAMP, true);
 
-                        if ((pvpWG->getDefenderTeam()!=TEAM_ALLIANCE) && (unitTarget->ToPlayer()->GetTeam() == HORDE))
-                        unitTarget->CastSpell(unitTarget, SPELL_TELEPORT_FORTRESS, true);
-                        else if ((pvpWG->getDefenderTeam()!=TEAM_ALLIANCE) && (unitTarget->ToPlayer()->GetTeam() == ALLIANCE))
-                        unitTarget->CastSpell(unitTarget, SPELL_TELEPORT_ALLIENCE_CAMP, true);
-                        }
+                       if ((pvpWG->getDefenderTeam()!=TEAM_ALLIANCE) && (unitTarget->ToPlayer()->GetTeam() == HORDE))
+                          unitTarget->CastSpell(unitTarget, SPELL_TELEPORT_FORTRESS, true);
+                       else if ((pvpWG->getDefenderTeam()!=TEAM_ALLIANCE) && (unitTarget->ToPlayer()->GetTeam() == ALLIANCE))
+                          unitTarget->CastSpell(unitTarget, SPELL_TELEPORT_ALLIENCE_CAMP, true);
+                     }
                 return;
-                   }
+                }
                 // Glyph of Backstab
                 case 63975:
                 {
@@ -4842,15 +4849,6 @@ void Spell::EffectScriptEffect(SpellEffIndex effIndex)
                     if (unitTarget && m_originalCaster)
                         m_originalCaster->CastSpell(unitTarget, urand(0, 1) ? damage : 52505, true);
                     return;
-                // Death Gate
-                case 52751:
-                {
-                    if (!unitTarget || unitTarget->getClass() != CLASS_DEATH_KNIGHT)
-                        return;
-                    // triggered spell is stored in m_spellInfo->EffectBasePoints[0]
-                    unitTarget->CastSpell(unitTarget, damage, false);
-                    break;
-                }
                 case 53110: // Devour Humanoid
                     if (unitTarget)
                         unitTarget->CastSpell(m_caster, damage, true);
@@ -5142,7 +5140,7 @@ void Spell::EffectScriptEffect(SpellEffIndex effIndex)
                         return;
 
                     // learn random explicit discovery recipe (if any)
-                    if (uint32 discoveredSpell = GetExplicitDiscoverySpell(m_spellInfo->Id, (Player*)m_caster))
+                    if (uint32 discoveredSpell = GetExplicitDiscoverySpell(m_spellInfo->Id, m_caster->ToPlayer()))
                         m_caster->ToPlayer()->learnSpell(discoveredSpell, false);
                     return;
                 }
@@ -5164,7 +5162,7 @@ void Spell::EffectScriptEffect(SpellEffIndex effIndex)
                                 oldContainer->DisappearAndDie();
                             // TODO: a hack, range = 11, should after some time cast, otherwise too far
                             m_caster->CastSpell(seat->GetBase(), 62496, true);
-                            unitTarget->EnterVehicle(seat, 1);
+                            unitTarget->EnterVehicle(m_caster, 1);
                         }
                     }
                     return;
@@ -6299,7 +6297,7 @@ void Spell::EffectSummonDeadPet(SpellEffIndex /*effIndex*/)
     pet->SetUInt32Value(UNIT_DYNAMIC_FLAGS, 0);
     pet->RemoveFlag (UNIT_FIELD_FLAGS, UNIT_FLAG_SKINNABLE);
     pet->setDeathState(ALIVE);
-    pet->ClearUnitState(UNIT_STAT_ALL_STATE);
+    pet->ClearUnitState(uint32(UNIT_STAT_ALL_STATE));
     pet->SetHealth(pet->CountPctFromMaxHealth(damage));
 
     //pet->AIM_Initialize();
@@ -7068,18 +7066,18 @@ void Spell::EffectActivateSpec(SpellEffIndex /*effIndex*/)
     unitTarget->ToPlayer()->ActivateSpec(damage-1);  // damage is 1 or 2, spec is 0 or 1
 }
 
-void Spell::EffectPlayerNotification(SpellEffIndex /*effIndex*/)
+void Spell::EffectPlayerNotification(SpellEffIndex effIndex)
 {
     if (!unitTarget || unitTarget->GetTypeId() != TYPEID_PLAYER)
         return;
 
-    OutdoorPvPWG *pvpWG = (OutdoorPvPWG*)sOutdoorPvPMgr->GetOutdoorPvPToZoneId(4197);
-
     switch(m_spellInfo->Id)
     {
         case 58730: // Restricted Flight Area
+        {
              if (sWorld->getBoolConfig(CONFIG_OUTDOORPVP_WINTERGRASP_ENABLED))
              {
+                OutdoorPvPWG *pvpWG = (OutdoorPvPWG*)sOutdoorPvPMgr->GetOutdoorPvPToZoneId(4197);
                 if (pvpWG->isWarTime()==true)
                 {
                    unitTarget->ToPlayer()->GetSession()->SendNotification(LANG_ZONE_NOFLYZONE);
@@ -7088,10 +7086,23 @@ void Spell::EffectPlayerNotification(SpellEffIndex /*effIndex*/)
                 } else unitTarget->RemoveAura(58730);
               }
             break;
+        }
         case 58600: // Restricted Flight Area
             unitTarget->ToPlayer()->GetSession()->SendNotification(LANG_ZONE_NOFLYZONE);
             break;
     }
+
+    uint32 soundid = m_spellInfo->EffectMiscValue[effIndex];
+
+    if (!sSoundEntriesStore.LookupEntry(soundid))
+    {
+        sLog->outError("EffectPlayerNotification: Sound (Id: %u) not exist in spell %u.", soundid, m_spellInfo->Id);
+        return;
+    }
+
+    WorldPacket data(SMSG_PLAY_SOUND, 4);
+    data << uint32(soundid);
+    unitTarget->ToPlayer()->GetSession()->SendPacket(&data);
 }
 
 void Spell::EffectRemoveAura(SpellEffIndex effIndex)
